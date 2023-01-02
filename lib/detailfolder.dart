@@ -3,39 +3,26 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
 
-import 'detailfolder.dart';
+class InnerFolder extends StatefulWidget {
+  InnerFolder({required this.filespath});
+  final String filespath;
 
-void main() {
-  runApp(MyApp());
-}
-
-class MyApp extends StatelessWidget {
-  // This widget is the root of your application.
   @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Flutter Demo',
-      theme: ThemeData(
-        primarySwatch: Colors.blue,
-      ),
-      home: HomePage(),
-    );
+  State<StatefulWidget> createState() {
+    return InnerFolderState();
   }
 }
 
-class HomePage extends StatefulWidget {
-  @override
-  _HomePageState createState() => _HomePageState();
-}
-
-class _HomePageState extends State<HomePage> {
+class InnerFolderState extends State<InnerFolder> {
+  String get fileStr => widget.filespath;
   Future<String> createFolderInAppDocDir(String folderName) async {
     //Get this App Document Directory
-    final Directory? _appDocDir = await getExternalStorageDirectory();
+
+    final Directory _appDocDir = await getApplicationDocumentsDirectory();
     //App Document Directory + folder name
     final Directory _appDocDirFolder =
-        Directory('${_appDocDir?.path}/$folderName/');
-    print(_appDocDir?.path);
+        Directory('${_appDocDir.path}/$folderName/');
+
     if (await _appDocDirFolder.exists()) {
       //if folder already exists return path
       return _appDocDirFolder.path;
@@ -56,6 +43,7 @@ class _HomePageState extends State<HomePage> {
 
   final folderController = TextEditingController();
   late String nameOfFolder;
+
   Future<void> _showMyDialog() async {
     return showDialog<void>(
       context: context,
@@ -132,14 +120,18 @@ class _HomePageState extends State<HomePage> {
 
   late List<FileSystemEntity> _folders;
   Future<void> getDir() async {
-    final directory = await getExternalStorageDirectory();
-    final dir = directory?.path;
+    /* final directory = await getApplicationDocumentsDirectory();
+    final dir = directory.path;
     String pdfDirectory = '$dir/';
-    final myDir = new Directory(pdfDirectory);
+    final myDir = new Directory(pdfDirectory);*/
+
+    final myDir = new Directory(fileStr);
+
+    var _folders_list = myDir.listSync(recursive: true, followLinks: false);
+
     setState(() {
       _folders = myDir.listSync(recursive: true, followLinks: false);
     });
-    print("_folders");
     print(_folders);
   }
 
@@ -175,7 +167,6 @@ class _HomePageState extends State<HomePage> {
 
   @override
   void initState() {
-    // TODO: implement initState
     _folders = [];
     getDir();
     super.initState();
@@ -185,7 +176,6 @@ class _HomePageState extends State<HomePage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text("Folder Info"),
         actions: [
           IconButton(
             icon: Icon(Icons.add),
@@ -232,22 +222,19 @@ class _HomePageState extends State<HomePage> {
                               } else {
                                 return InkWell(
                                   onTap: () {
-                                    Navigator.push(context,
-                                        new MaterialPageRoute(
-                                            builder: (builder) {
-                                      return InnerFolder(
-                                          filespath: _folders[index].path);
-                                    }));
-                                    /* final myDir = new Directory(_folders[index].path);
+                                    final myDir =
+                                        new Directory(_folders[index].path);
 
-                                          var    _folders_list = myDir.listSync(recursive: true, followLinks: false);
+                                    var _folders_list = myDir.listSync(
+                                        recursive: true, followLinks: false);
 
-                                          for(int k=0;k<_folders_list.length;k++)
-                                          {
-                                            var config = File(_folders_list[k].path);
-                                            print("IsFile ${config is File}");
-                                          }
-                                          print(_folders_list);*/
+                                    for (int k = 0;
+                                        k < _folders_list.length;
+                                        k++) {
+                                      var config = File(_folders_list[k].path);
+                                      print("IsFile ${config is File}");
+                                    }
+                                    print(_folders_list);
                                   },
                                   child: Icon(
                                     Icons.folder,
