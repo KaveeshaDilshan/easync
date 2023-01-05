@@ -63,7 +63,7 @@ class _HomePageState extends State<HomePage> {
       builder: (BuildContext context) {
         return AlertDialog(
           title: Column(
-            children: [
+            children: const [
               Text(
                 'ADD FOLDER',
                 textAlign: TextAlign.left,
@@ -81,7 +81,8 @@ class _HomePageState extends State<HomePage> {
               return TextField(
                 controller: folderController,
                 autofocus: true,
-                decoration: InputDecoration(hintText: 'Enter folder name'),
+                decoration:
+                    const InputDecoration(hintText: 'Enter folder name'),
                 onChanged: (val) {
                   setState(() {
                     nameOfFolder = folderController.text;
@@ -96,7 +97,7 @@ class _HomePageState extends State<HomePage> {
               style: TextButton.styleFrom(
                 backgroundColor: Colors.blue,
               ),
-              child: Text(
+              child: const Text(
                 'Add',
                 style: TextStyle(color: Colors.white),
               ),
@@ -116,7 +117,7 @@ class _HomePageState extends State<HomePage> {
               style: TextButton.styleFrom(
                 backgroundColor: Colors.redAccent,
               ),
-              child: Text(
+              child: const Text(
                 'No',
                 style: TextStyle(color: Colors.white),
               ),
@@ -135,7 +136,7 @@ class _HomePageState extends State<HomePage> {
     final directory = await getExternalStorageDirectory();
     final dir = directory?.path;
     String pdfDirectory = '$dir/';
-    final myDir = new Directory(pdfDirectory);
+    final myDir = Directory(pdfDirectory);
     setState(() {
       _folders = myDir.listSync(recursive: true, followLinks: false);
     });
@@ -196,11 +197,11 @@ class _HomePageState extends State<HomePage> {
         ],
       ),
       body: GridView.builder(
-        padding: EdgeInsets.symmetric(
+        padding: const EdgeInsets.symmetric(
           horizontal: 20,
           vertical: 25,
         ),
-        gridDelegate: SliverGridDelegateWithMaxCrossAxisExtent(
+        gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
           maxCrossAxisExtent: 180,
           mainAxisSpacing: 10,
           crossAxisSpacing: 10,
@@ -212,7 +213,7 @@ class _HomePageState extends State<HomePage> {
               children: [
                 Container(
                   width: double.infinity,
-                  padding: EdgeInsets.all(10),
+                  padding: const EdgeInsets.all(10),
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
@@ -224,7 +225,7 @@ class _HomePageState extends State<HomePage> {
                               print("file.stat() ${f.type}");
                               ;
                               if (f.type.toString().contains("file")) {
-                                return Icon(
+                                return const Icon(
                                   Icons.file_copy_outlined,
                                   size: 100,
                                   color: Colors.orange,
@@ -233,8 +234,7 @@ class _HomePageState extends State<HomePage> {
                                 return InkWell(
                                   onTap: () {
                                     Navigator.push(context,
-                                        new MaterialPageRoute(
-                                            builder: (builder) {
+                                        MaterialPageRoute(builder: (builder) {
                                       return InnerFolder(
                                           filespath: _folders[index].path);
                                     }));
@@ -249,7 +249,7 @@ class _HomePageState extends State<HomePage> {
                                           }
                                           print(_folders_list);*/
                                   },
-                                  child: Icon(
+                                  child: const Icon(
                                     Icons.folder,
                                     size: 100,
                                     color: Colors.orange,
@@ -257,14 +257,14 @@ class _HomePageState extends State<HomePage> {
                                 );
                               }
                             }
-                            return Icon(
+                            return const Icon(
                               Icons.file_copy_outlined,
                               size: 100,
                               color: Colors.orange,
                             );
                           }),
                       Text(
-                        '${_folders[index].path.split('/').last}',
+                        _folders[index].path.split('/').last,
                       ),
                     ],
                   ),
