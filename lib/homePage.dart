@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:open_file/open_file.dart';
 import 'detailfolder.dart';
 import 'package:file_picker/file_picker.dart';
 
@@ -12,10 +13,10 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
   Future<String> createFolderInAppDocDir(String folderName) async {
     //Get this App Document Directory
-    final Directory? _appDocDir = await getExternalStorageDirectory();
+    // final Directory? _appDocDir = await getExternalStorageDirectory();
     //App Document Directory + folder name
     final Directory _appDocDirFolder =
-    Directory('${_appDocDir?.path}/$folderName/');
+    Directory('/storage/emulated/0/$folderName/');
     if (await _appDocDirFolder.exists()) {
       //if folder already exists return path
       return _appDocDirFolder.path;
@@ -115,7 +116,6 @@ class _HomePageState extends State<HomePage> {
     final dir = directory?.path;
     String pdfDirectory = '$dir/';
     final myDir = Directory(pdfDirectory);
-    print(myDir);
     setState(() {
       _folders = myDir.listSync(recursive: false, followLinks: false);
     });
@@ -169,6 +169,9 @@ class _HomePageState extends State<HomePage> {
             icon: const Icon(Icons.file_upload_rounded),
             onPressed: () async {
               FilePickerResult? result = await FilePicker.platform.pickFiles();
+              if (result == null) return;
+              final file = result.files.first;
+              await saveFilePermanently(file);
             },
           ),
           IconButton(
@@ -206,10 +209,16 @@ class _HomePageState extends State<HomePage> {
                             if (snapshot.hasData) {
                               FileStat f = snapshot.data as FileStat;
                               if (f.type.toString().contains("file")) {
-                                return const Icon(
-                                  Icons.file_copy_outlined,
-                                  size: 100,
-                                  color: Colors.orange,
+                                return InkWell(
+                                  onTap: () {
+                                    File file = File(_folders[index].path);
+                                    openFile(file);
+                                  },
+                                  child: const Icon(
+                                    Icons.file_copy_outlined,
+                                    size: 100,
+                                    color: Colors.orange,
+                                  ),
                                 );
                               } else {
                                 return InkWell(
@@ -260,6 +269,18 @@ class _HomePageState extends State<HomePage> {
         itemCount: _folders.length,
       ),
     );
+  }
+
+  Future<void> saveFilePermanently(PlatformFile file) async {
+    // final appStorage = await getApplicationDocumentsDirectory();
+    final Directory? appDocDir = await getExternalStorageDirectory();
+    final newFile = File('${appDocDir?.path}/${file.name}');
+    File(file.path!).copy(newFile.path);
+    getDir();
+  }
+
+  void openFile(File file) {
+    OpenFile.open(file.path);
   }
 
   Future getFileType(file) {
