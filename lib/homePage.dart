@@ -1,31 +1,28 @@
 import 'dart:io';
-
 import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
+import 'detailfolder.dart';
+import 'package:file_picker/file_picker.dart';
 
-class InnerFolder extends StatefulWidget {
-  InnerFolder({required this.filespath});
-  final String filespath;
-
+class HomePage extends StatefulWidget {
   @override
-  State<StatefulWidget> createState() {
-    return InnerFolderState();
-  }
+  _HomePageState createState() => _HomePageState();
 }
 
-class InnerFolderState extends State<InnerFolder> {
-  String get fileStr => widget.filespath;
+class _HomePageState extends State<HomePage> {
   Future<String> createFolderInAppDocDir(String folderName) async {
+    //Get this App Document Directory
+    final Directory? _appDocDir = await getExternalStorageDirectory();
     //App Document Directory + folder name
     final Directory _appDocDirFolder =
-        Directory('$fileStr/$folderName/');
+    Directory('${_appDocDir?.path}/$folderName/');
     if (await _appDocDirFolder.exists()) {
       //if folder already exists return path
       return _appDocDirFolder.path;
     } else {
       //if folder not exists create folder and then return its path
       final Directory _appDocDirNewFolder =
-          await _appDocDirFolder.create(recursive: true);
+      await _appDocDirFolder.create(recursive: true);
       return _appDocDirNewFolder.path;
     }
   }
@@ -37,8 +34,7 @@ class InnerFolderState extends State<InnerFolder> {
   }
 
   final folderController = TextEditingController();
-  late String nameOfFolder = "";
-
+  late String nameOfFolder;
   Future<void> _showMyDialog() async {
     return showDialog<void>(
       context: context,
@@ -64,7 +60,8 @@ class InnerFolderState extends State<InnerFolder> {
               return TextField(
                 controller: folderController,
                 autofocus: true,
-                decoration: const InputDecoration(hintText: 'Enter folder name'),
+                decoration:
+                const InputDecoration(hintText: 'Enter folder name'),
                 onChanged: (val) {
                   setState(() {
                     nameOfFolder = folderController.text;
@@ -83,7 +80,7 @@ class InnerFolderState extends State<InnerFolder> {
                 style: TextStyle(color: Colors.white),
               ),
               onPressed: () async {
-                if (nameOfFolder != "") {
+                if (nameOfFolder != null) {
                   await callFolderCreationMethod(nameOfFolder);
                   getDir();
                   setState(() {
@@ -114,15 +111,11 @@ class InnerFolderState extends State<InnerFolder> {
 
   late List<FileSystemEntity> _folders;
   Future<void> getDir() async {
-    /* final directory = await getApplicationDocumentsDirectory();
-    final dir = directory.path;
+    final directory = await getExternalStorageDirectory();
+    final dir = directory?.path;
     String pdfDirectory = '$dir/';
-    final myDir = new Directory(pdfDirectory);*/
-
-    final myDir = new Directory(fileStr);
-
-    // var _folders_list = myDir.listSync(recursive: true, followLinks: false);
-
+    final myDir = Directory(pdfDirectory);
+    print(myDir);
     setState(() {
       _folders = myDir.listSync(recursive: false, followLinks: false);
     });
@@ -134,20 +127,20 @@ class InnerFolderState extends State<InnerFolder> {
       barrierDismissible: false, // user must tap button!
       builder: (BuildContext context) {
         return AlertDialog(
-          title: Text(
+          title: const Text(
             'Are you sure to delete this folder?',
           ),
           actions: <Widget>[
             TextButton(
-              child: Text('Yes'),
+              child: const Text('Yes'),
               onPressed: () async {
-                await _folders[index].delete();
+                await _folders[index].delete(recursive : true);
                 getDir();
                 Navigator.of(context).pop();
               },
             ),
             TextButton(
-              child: Text('No'),
+              child: const Text('No'),
               onPressed: () {
                 Navigator.of(context).pop();
               },
@@ -160,6 +153,7 @@ class InnerFolderState extends State<InnerFolder> {
 
   @override
   void initState() {
+    // TODO: implement initState
     _folders = [];
     getDir();
     super.initState();
@@ -169,9 +163,16 @@ class InnerFolderState extends State<InnerFolder> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
+        title: const Text("Folder Info"),
         actions: [
           IconButton(
-            icon: Icon(Icons.add),
+            icon: const Icon(Icons.file_upload_rounded),
+            onPressed: () async {
+              FilePickerResult? result = await FilePicker.platform.pickFiles();
+            },
+          ),
+          IconButton(
+            icon: const Icon(Icons.create_new_folder_rounded),
             onPressed: () {
               _showMyDialog();
             },
@@ -179,11 +180,11 @@ class InnerFolderState extends State<InnerFolder> {
         ],
       ),
       body: GridView.builder(
-        padding: EdgeInsets.symmetric(
+        padding: const EdgeInsets.symmetric(
           horizontal: 20,
           vertical: 25,
         ),
-        gridDelegate: SliverGridDelegateWithMaxCrossAxisExtent(
+        gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
           maxCrossAxisExtent: 180,
           mainAxisSpacing: 10,
           crossAxisSpacing: 10,
@@ -195,7 +196,7 @@ class InnerFolderState extends State<InnerFolder> {
               children: [
                 Container(
                   width: double.infinity,
-                  padding: EdgeInsets.all(10),
+                  padding: const EdgeInsets.all(10),
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
@@ -234,7 +235,7 @@ class InnerFolderState extends State<InnerFolder> {
                             );
                           }),
                       Text(
-                        '${_folders[index].path.split('/').last}',
+                        _folders[index].path.split('/').last,
                       ),
                     ],
                   ),
@@ -246,7 +247,7 @@ class InnerFolderState extends State<InnerFolder> {
                     onTap: () {
                       _showDeleteDialog(index);
                     },
-                    child: Icon(
+                    child: const Icon(
                       Icons.delete,
                       color: Colors.grey,
                     ),
