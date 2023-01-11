@@ -15,16 +15,16 @@ class _HomePageState extends State<HomePage> {
     //Get this App Document Directory
     // final Directory? _appDocDir = await getExternalStorageDirectory();
     //App Document Directory + folder name
-    final Directory _appDocDirFolder =
-    Directory('/storage/emulated/0/$folderName/');
-    if (await _appDocDirFolder.exists()) {
+    final Directory appDocDirFolder =
+        Directory('/storage/emulated/0/Easync/$folderName/');
+    if (await appDocDirFolder.exists()) {
       //if folder already exists return path
-      return _appDocDirFolder.path;
+      return appDocDirFolder.path;
     } else {
       //if folder not exists create folder and then return its path
-      final Directory _appDocDirNewFolder =
-      await _appDocDirFolder.create(recursive: true);
-      return _appDocDirNewFolder.path;
+      final Directory appDocDirNewFolder =
+          await appDocDirFolder.create(recursive: true);
+      return appDocDirNewFolder.path;
     }
   }
 
@@ -62,7 +62,7 @@ class _HomePageState extends State<HomePage> {
                 controller: folderController,
                 autofocus: true,
                 decoration:
-                const InputDecoration(hintText: 'Enter folder name'),
+                    const InputDecoration(hintText: 'Enter folder name'),
                 onChanged: (val) {
                   setState(() {
                     nameOfFolder = folderController.text;
@@ -112,9 +112,10 @@ class _HomePageState extends State<HomePage> {
 
   late List<FileSystemEntity> _folders;
   Future<void> getDir() async {
-    final directory = await getExternalStorageDirectory();
-    final dir = directory?.path;
-    String pdfDirectory = '$dir/';
+    await createRootFolder();
+    // final directory = await getExternalStorageDirectory();
+    // final dir = directory?.path;
+    String pdfDirectory = '/storage/emulated/0/Easync/';
     final myDir = Directory(pdfDirectory);
     setState(() {
       _folders = myDir.listSync(recursive: false, followLinks: false);
@@ -134,7 +135,7 @@ class _HomePageState extends State<HomePage> {
             TextButton(
               child: const Text('Yes'),
               onPressed: () async {
-                await _folders[index].delete(recursive : true);
+                await _folders[index].delete(recursive: true);
                 getDir();
                 Navigator.of(context).pop();
               },
@@ -157,6 +158,14 @@ class _HomePageState extends State<HomePage> {
     _folders = [];
     getDir();
     super.initState();
+  }
+
+  Future<void> createRootFolder() async {
+    // Create root directory for app
+    final Directory rootDirectory = Directory('/storage/emulated/0/Easync/');
+    if (!await rootDirectory.exists()) {
+      await rootDirectory.create(recursive: true);
+    }
   }
 
   @override
@@ -225,9 +234,9 @@ class _HomePageState extends State<HomePage> {
                                   onTap: () {
                                     Navigator.push(context,
                                         MaterialPageRoute(builder: (builder) {
-                                          return InnerFolder(
-                                              filespath: _folders[index].path);
-                                        }));
+                                      return InnerFolder(
+                                          filesPath: _folders[index].path);
+                                    }));
                                   },
                                   child: const Icon(
                                     Icons.folder,
@@ -273,8 +282,9 @@ class _HomePageState extends State<HomePage> {
 
   Future<void> saveFilePermanently(PlatformFile file) async {
     // final appStorage = await getApplicationDocumentsDirectory();
-    final Directory? appDocDir = await getExternalStorageDirectory();
-    final newFile = File('${appDocDir?.path}/${file.name}');
+    // final Directory? appDocDir = await getExternalStorageDirectory();
+    // final newFile = File('${appDocDir?.path}/${file.name}');
+    final newFile = File('/storage/emulated/0/Easync/${file.name}');
     File(file.path!).copy(newFile.path);
     getDir();
   }
