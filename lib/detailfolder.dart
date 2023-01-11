@@ -1,11 +1,11 @@
 import 'dart:io';
-
 import 'package:flutter/material.dart';
-import 'package:path_provider/path_provider.dart';
+import 'package:file_picker/file_picker.dart';
+import 'package:open_file/open_file.dart';
 
 class InnerFolder extends StatefulWidget {
-  InnerFolder({required this.filespath});
-  final String filespath;
+  const InnerFolder({super.key, required this.filesPath});
+  final String filesPath;
 
   @override
   State<StatefulWidget> createState() {
@@ -14,19 +14,18 @@ class InnerFolder extends StatefulWidget {
 }
 
 class InnerFolderState extends State<InnerFolder> {
-  String get fileStr => widget.filespath;
+  String get fileStr => widget.filesPath;
   Future<String> createFolderInAppDocDir(String folderName) async {
     //App Document Directory + folder name
-    final Directory _appDocDirFolder =
-        Directory('$fileStr/$folderName/');
-    if (await _appDocDirFolder.exists()) {
+    final Directory appDocDirFolder = Directory('$fileStr/$folderName/');
+    if (await appDocDirFolder.exists()) {
       //if folder already exists return path
-      return _appDocDirFolder.path;
+      return appDocDirFolder.path;
     } else {
       //if folder not exists create folder and then return its path
-      final Directory _appDocDirNewFolder =
-          await _appDocDirFolder.create(recursive: true);
-      return _appDocDirNewFolder.path;
+      final Directory appDocDirNewFolder =
+          await appDocDirFolder.create(recursive: true);
+      return appDocDirNewFolder.path;
     }
   }
 
@@ -64,7 +63,8 @@ class InnerFolderState extends State<InnerFolder> {
               return TextField(
                 controller: folderController,
                 autofocus: true,
-                decoration: const InputDecoration(hintText: 'Enter folder name'),
+                decoration:
+                    const InputDecoration(hintText: 'Enter folder name'),
                 onChanged: (val) {
                   setState(() {
                     nameOfFolder = folderController.text;
@@ -119,7 +119,7 @@ class InnerFolderState extends State<InnerFolder> {
     String pdfDirectory = '$dir/';
     final myDir = new Directory(pdfDirectory);*/
 
-    final myDir = new Directory(fileStr);
+    final myDir = Directory(fileStr);
 
     // var _folders_list = myDir.listSync(recursive: true, followLinks: false);
 
@@ -134,12 +134,12 @@ class InnerFolderState extends State<InnerFolder> {
       barrierDismissible: false, // user must tap button!
       builder: (BuildContext context) {
         return AlertDialog(
-          title: Text(
+          title: const Text(
             'Are you sure to delete this folder?',
           ),
           actions: <Widget>[
             TextButton(
-              child: Text('Yes'),
+              child: const Text('Yes'),
               onPressed: () async {
                 await _folders[index].delete();
                 getDir();
@@ -147,7 +147,7 @@ class InnerFolderState extends State<InnerFolder> {
               },
             ),
             TextButton(
-              child: Text('No'),
+              child: const Text('No'),
               onPressed: () {
                 Navigator.of(context).pop();
               },
@@ -171,7 +171,16 @@ class InnerFolderState extends State<InnerFolder> {
       appBar: AppBar(
         actions: [
           IconButton(
-            icon: Icon(Icons.add),
+            icon: const Icon(Icons.file_upload_rounded),
+            onPressed: () async {
+              FilePickerResult? result = await FilePicker.platform.pickFiles();
+              if (result == null) return;
+              final file = result.files.first;
+              await saveFilePermanently(file);
+            },
+          ),
+          IconButton(
+            icon: const Icon(Icons.create_new_folder_rounded),
             onPressed: () {
               _showMyDialog();
             },
@@ -179,11 +188,11 @@ class InnerFolderState extends State<InnerFolder> {
         ],
       ),
       body: GridView.builder(
-        padding: EdgeInsets.symmetric(
+        padding: const EdgeInsets.symmetric(
           horizontal: 20,
           vertical: 25,
         ),
-        gridDelegate: SliverGridDelegateWithMaxCrossAxisExtent(
+        gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
           maxCrossAxisExtent: 180,
           mainAxisSpacing: 10,
           crossAxisSpacing: 10,
@@ -195,7 +204,7 @@ class InnerFolderState extends State<InnerFolder> {
               children: [
                 Container(
                   width: double.infinity,
-                  padding: EdgeInsets.all(10),
+                  padding: const EdgeInsets.all(10),
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
@@ -205,19 +214,25 @@ class InnerFolderState extends State<InnerFolder> {
                             if (snapshot.hasData) {
                               FileStat f = snapshot.data as FileStat;
                               if (f.type.toString().contains("file")) {
-                                return const Icon(
-                                  Icons.file_copy_outlined,
-                                  size: 100,
-                                  color: Colors.orange,
+                                return InkWell(
+                                  onTap: () {
+                                    File file = File(_folders[index].path);
+                                    openFile(file);
+                                  },
+                                  child: const Icon(
+                                    Icons.file_copy_outlined,
+                                    size: 100,
+                                    color: Colors.orange,
+                                  ),
                                 );
                               } else {
                                 return InkWell(
                                   onTap: () {
                                     Navigator.push(context,
                                         MaterialPageRoute(builder: (builder) {
-                                          return InnerFolder(
-                                              filespath: _folders[index].path);
-                                        }));
+                                      return InnerFolder(
+                                          filesPath: _folders[index].path);
+                                    }));
                                   },
                                   child: const Icon(
                                     Icons.folder,
@@ -234,7 +249,7 @@ class InnerFolderState extends State<InnerFolder> {
                             );
                           }),
                       Text(
-                        '${_folders[index].path.split('/').last}',
+                        _folders[index].path.split('/').last,
                       ),
                     ],
                   ),
@@ -246,7 +261,7 @@ class InnerFolderState extends State<InnerFolder> {
                     onTap: () {
                       _showDeleteDialog(index);
                     },
-                    child: Icon(
+                    child: const Icon(
                       Icons.delete,
                       color: Colors.grey,
                     ),
@@ -259,6 +274,19 @@ class InnerFolderState extends State<InnerFolder> {
         itemCount: _folders.length,
       ),
     );
+  }
+
+  Future<void> saveFilePermanently(PlatformFile file) async {
+    // final appStorage = await getApplicationDocumentsDirectory();
+    // final Directory? appDocDir = await getExternalStorageDirectory();
+    // final newFile = File('${appDocDir?.path}/${file.name}');
+    final newFile = File('$fileStr/${file.name}');
+    File(file.path!).copy(newFile.path);
+    getDir();
+  }
+
+  void openFile(File file) {
+    OpenFile.open(file.path);
   }
 
   Future getFileType(file) {
