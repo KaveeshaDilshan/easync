@@ -25,7 +25,7 @@ class _AppPermissionState extends State<AppPermission>
   void initState() {
     super.initState();
     WidgetsBinding.instance!.addObserver(this);
-    _checkStoragePermission();
+    // _checkStoragePermission();
   }
 
   @override
@@ -59,7 +59,7 @@ class _AppPermissionState extends State<AppPermission>
         _storagePermission = Future.value(PermissionState.grantedPermission);
       });
     } else {
-      final result = await Permission.storage.request();
+      final result = await Permission.manageExternalStorage.request();
       if (result == PermissionStatus.granted) {
         setState(() {
           _storagePermission = Future.value(PermissionState.grantedPermission);
