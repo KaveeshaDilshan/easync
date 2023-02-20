@@ -25,7 +25,7 @@ class _AppPermissionState extends State<AppPermission>
   void initState() {
     super.initState();
     WidgetsBinding.instance!.addObserver(this);
-    // _checkStoragePermission();
+    _checkStoragePermission();
   }
 
   @override
