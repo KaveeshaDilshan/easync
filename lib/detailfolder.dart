@@ -142,7 +142,8 @@ class InnerFolderState extends State<InnerFolder> {
               child: const Text('Yes'),
               onPressed: () async {
                 await _folders[index].delete();
-                getDir();
+                await getDir();
+                await Future.delayed(const Duration(milliseconds: 300));
                 Navigator.of(context).pop();
               },
             ),
