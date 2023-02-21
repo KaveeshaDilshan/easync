@@ -8,7 +8,6 @@ import 'package:open_file/open_file.dart';
 import 'package:ping_discover_network_forked/ping_discover_network_forked.dart';
 import 'detailfolder.dart';
 import 'package:file_picker/file_picker.dart';
-import 'dart:math' as math;
 
 class HomePage extends StatefulWidget {
   @override
@@ -20,10 +19,8 @@ class _HomePageState extends State<HomePage> {
   ServerSocket? serverObject;
   Socket? clientObject;
   bool syncClosed = true;
+  double syncingBarSize = 0.0;
   Future<String> createFolderInAppDocDir(String folderName) async {
-    //Get this App Document Directory
-    //final Directory? _appDocDir = await getExternalStorageDirectory();
-    //App Document Directory + folder name
     final Directory appDocDirFolder =
         Directory('/storage/emulated/0/Easync/$folderName/');
     if (await appDocDirFolder.exists()) {
@@ -122,8 +119,6 @@ class _HomePageState extends State<HomePage> {
   late List<FileSystemEntity> _folders;
   Future<void> getDir() async {
     await createRootFolder();
-    // final directory = await getExternalStorageDirectory();
-    // final dir = directory?.path;
     String pdfDirectory = '/storage/emulated/0/Easync/';
     final myDir = Directory(pdfDirectory);
     setState(() {
@@ -187,32 +182,30 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
-  Future<String?> getSubnet() async {
+  Future<String> getSubnet() async {
     for (var interface in await NetworkInterface.list()) {
       if (interface.name == 'wlan0' || interface.name == 'swlan0') {
         for (var addr in interface.addresses) {
           if (addr.address.startsWith('192.168.')) {
-            print(addr);
             return addr.address.split('.').sublist(0, 3).join('.');
           }
         }
       }
     }
-    return null;
+    return '192.169.5';
   }
 
   Future<String> getConnectedDeviceIp() async {
     var subnet = await getSubnet();
     const port = 1234;
     final stream = NetworkAnalyzer.discover2(
-      subnet!,
+      subnet,
       port,
       timeout: const Duration(seconds: 5),
     );
-    String serverIP = '192.168.5.5';
+    String serverIP = '192.169.5.5';
     stream.listen((NetworkAddress addr) {
       if (addr.exists) {
-        print('Found device: ${addr.ip}:$port');
         serverIP = addr.ip;
       }
     });
@@ -226,7 +219,7 @@ class _HomePageState extends State<HomePage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text("Folder Info"),
+        title: const Text("Easync Folders"),
         actions: [
           IconButton(
             icon: const Icon(Icons.file_upload_rounded),
@@ -257,7 +250,7 @@ class _HomePageState extends State<HomePage> {
                     key: _dialogKey,
                     builder: (context, setState) {
                       if (deviceConnected) {
-                        Future.delayed(const Duration(milliseconds: 800));
+                        Future.delayed(const Duration(milliseconds: 1500));
                         Navigator.of(context).pop();
                       }
                       return AlertDialog(
@@ -291,8 +284,18 @@ class _HomePageState extends State<HomePage> {
                               setState(() {
                                 syncClosed = true;
                               });
-                              if (serverObject != null) serverObject?.close();
-                              if (clientObject != null) clientObject?.close();
+                              if (serverObject != null) {
+                                serverObject?.close();
+                                setState(() {
+                                  serverObject = null;
+                                });
+                              }
+                              if (clientObject != null) {
+                                clientObject?.close();
+                                setState(() {
+                                  clientObject = null;
+                                });
+                              }
                               Navigator.of(context).pop();
                             },
                           ),
@@ -304,26 +307,47 @@ class _HomePageState extends State<HomePage> {
               );
 
               while (!deviceConnected && !syncClosed) {
-                await server(1234, 5046);
-                // after random time
-                final random = math.Random();
-                final randomWait = random.nextInt(5) +
-                    1; // generate a random number between 1 and 5
-                await Future.delayed(Duration(seconds: randomWait));
-                if (serverObject != null) serverObject?.close();
-                await Future.delayed(const Duration(seconds: 1));
-                // get ip
-                String serverIp = await getConnectedDeviceIp();
-                print(serverIp);
-                if (!deviceConnected) {
-                  await client("192.168.8.85", 1234, 5046,
-                      "/storage/emulated/0/Easync/");
+                String connectivityState = await checkConnectivity();
+                String subnet = await getSubnet();
+                if (connectivityState == "wifi" &&
+                    subnet.startsWith('192.168.')) {
+                  for (int i = 1; i <= 255; i++) {
+                    // print('$subnet.$i');
+                    await client("$subnet.$i", 1234, 5046,
+                        "/storage/emulated/0/Easync/");
+                    await Future.delayed(const Duration(milliseconds: 110));
+                    if (deviceConnected || syncClosed) break;
+                  }
+                } else {
+                  if (serverObject == null) {
+                    await server(1234, 5046);
+                  }
+                  await Future.delayed(const Duration(seconds: 1));
                 }
-                await Future.delayed(const Duration(seconds: 2));
+
+                if (serverObject != null && !deviceConnected) {
+                  serverObject?.close();
+                  setState(() {
+                    serverObject = null;
+                  });
+                }
+                if (clientObject != null && !deviceConnected) {
+                  clientObject?.close();
+                  setState(() {
+                    clientObject = null;
+                  });
+                }
               }
             },
           ),
         ],
+        bottom: deviceConnected
+            ? MyLinearProgressIndicator(
+                backgroundColor: Colors.blue,
+                value: syncingBarSize,
+                valueColor: const AlwaysStoppedAnimation<Color>(Colors.orange),
+              )
+            : null,
       ),
       body: GridView.builder(
         padding: const EdgeInsets.symmetric(
@@ -415,9 +439,6 @@ class _HomePageState extends State<HomePage> {
   }
 
   Future<void> saveFilePermanently(PlatformFile file) async {
-    // final appStorage = await getApplicationDocumentsDirectory();
-    // final Directory? appDocDir = await getExternalStorageDirectory();
-    // final newFile = File('${appDocDir?.path}/${file.name}');
     final newFile = File('/storage/emulated/0/Easync/${file.name}');
     File(file.path!).copy(newFile.path);
     getDir();
@@ -441,26 +462,14 @@ class _HomePageState extends State<HomePage> {
       });
       // Wait for clients to connect
       server.listen((Socket socket) {
-        print('Client connected: ${socket.remoteAddress.address}');
-        print('Client connected: ${socket.remoteAddress.address}');
-        print('Client connected: ${socket.remoteAddress.address}');
-        print('Client connected: ${socket.remoteAddress.address}');
-        print('Client connected: ${socket.remoteAddress.address}');
-        print('Client connected: ${socket.remoteAddress.address}');
-        print('Client connected: ${socket.remoteAddress.address}');
-        print('Client connected: ${socket.remoteAddress.address}');
-        print('Client connected: ${socket.remoteAddress.address}');
-        print('Client connected: ${socket.remoteAddress.address}');
         setState(() {
           deviceConnected = true;
           _dialogKey.currentState?.setState(() {});
         });
-        print(deviceConnected);
 
         // Read messages from the client
         utf8.decoder.bind(socket).listen((String data) async {
           Map<String, dynamic> jsonMap = json.decode(data);
-          print(jsonMap);
           // Handle different types of messages
           switch (jsonMap["route"]) {
             case 'SYNC':
@@ -469,7 +478,6 @@ class _HomePageState extends State<HomePage> {
               var filePaths = <String>[];
               await folder.list(recursive: true).forEach((element) {
                 if (element is File) {
-                  print(element.path);
                   filePaths.add(element.path);
                 }
               });
@@ -478,7 +486,6 @@ class _HomePageState extends State<HomePage> {
                 "folderPath": folderPath,
                 "files": filePaths,
               };
-              print(filePaths);
               final jsonString = json.encode(jsonData);
               socket.write(jsonString);
               break;
@@ -508,7 +515,6 @@ class _HomePageState extends State<HomePage> {
                   var completer = Completer<void>();
                   var response = await sendFile(
                       filePath, socket.remoteAddress.address, fileServerPort);
-                  print(response.statusCode);
                   if (response.statusCode == 200) {
                     completer.complete();
                   }
@@ -522,8 +528,7 @@ class _HomePageState extends State<HomePage> {
               await Future.delayed(const Duration(seconds: 1));
               server.close();
               setState(() {
-                print(
-                    "awaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
+                serverObject = null;
                 deviceConnected = false;
                 syncClosed = true;
               });
@@ -531,10 +536,10 @@ class _HomePageState extends State<HomePage> {
             case 'CLOSE':
               // Close the connection
               server.close();
-              print('Client disconnected');
+              debugPrint('Client disconnected');
               break;
             default:
-              print('Unknown message: $data');
+              debugPrint('Unknown message: $data');
               break;
           }
         });
@@ -547,24 +552,11 @@ class _HomePageState extends State<HomePage> {
     // Connect to the server
     try {
       Socket.connect(serverIp, msgServerPort).then((Socket socket) {
-        print('Connected to server');
-        print('Connected to server');
-        print('Connected to server');
-        print('Connected to server');
-        print('Connected to server');
-        print('Connected to server');
-        print('Connected to server');
-        print('Connected to server');
-        print('Connected to server');
-        print('Connected to server');
-        print('Connected to server');
-        print('Connected to server');
         setState(() {
           deviceConnected = true;
           clientObject = socket;
           _dialogKey.currentState?.setState(() {});
         });
-        print(deviceConnected);
         // Send a message to the server to indicate that a folder is being synchronized
         final jsonData = {
           "route": 'SYNC',
@@ -606,14 +598,12 @@ class _HomePageState extends State<HomePage> {
                   "filePath": filePath,
                   "fileSize": entity.lengthSync()
                 };
-                print(jsonData);
                 final jsonString = json.encode(jsonData);
                 socket.write(jsonString);
                 await Future.delayed(const Duration(seconds: 1));
                 var completer = Completer<void>();
                 var response =
                     await sendFile(filePath, serverIp, fileServerPort);
-                print(response.statusCode);
                 if (response.statusCode == 200) {
                   completer.complete();
                 }
@@ -632,9 +622,8 @@ class _HomePageState extends State<HomePage> {
             int fileSize = jsonMap["fileSize"];
             await receiveFile(filePath, fileServerPort, fileSize);
           } else if (jsonMap['route'] == "CLOSE") {
-            print(
-                "awaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
             setState(() {
+              clientObject = null;
               deviceConnected = false;
               syncClosed = true;
             });
@@ -645,17 +634,16 @@ class _HomePageState extends State<HomePage> {
           // Close the socket and exit the program
           // socket.close();
         });
+      }, onError: (error) {
+        // print('Connection error');
       });
     } catch (e) {
-      print("eeeeeeeeeeeeeee");
       print(e);
     }
   }
 
   Future<HttpClientResponse> sendFile(
       String filePath, String ipAddress, int port) async {
-    print("awaaaaaaaa");
-    print(filePath);
     var file = File(filePath);
     var openedFile = await file.open(mode: FileMode.read);
     var client = HttpClient();
@@ -680,7 +668,6 @@ class _HomePageState extends State<HomePage> {
     );
     print('Listening on port $port...');
     await for (var request in server) {
-      print("request $request");
       if (request.method == 'PUT') {
         var file = File(filePath);
         if (!file.existsSync()) {
@@ -694,14 +681,18 @@ class _HomePageState extends State<HomePage> {
           print('Received $count/$fileSize bytes');
           consumer.add(data);
           if (count == fileSize) {
-            print("awaaaaa 1");
             completer.complete();
+            setState(() {
+              syncingBarSize = 0.0;
+            });
+          } else {
+            setState(() {
+              syncingBarSize = count / fileSize;
+            });
           }
         }, onDone: () {
-          print("awaaaaa 2");
           consumer.close();
         }, onError: (error) {
-          print("awaaaaa 3");
           consumer.close();
           completer.completeError(error);
         });
@@ -721,4 +712,27 @@ class _HomePageState extends State<HomePage> {
     }
     server.close();
   }
+}
+
+const double _kMyLinearProgressIndicatorHeight = 6.0;
+
+class MyLinearProgressIndicator extends LinearProgressIndicator
+    implements PreferredSizeWidget {
+  MyLinearProgressIndicator({
+    Key? key,
+    double? value,
+    required Color backgroundColor,
+    Animation<Color>? valueColor,
+  }) : super(
+          key: key,
+          value: value,
+          backgroundColor: backgroundColor,
+          valueColor: valueColor,
+        ) {
+    preferredSize =
+        const Size(double.infinity, _kMyLinearProgressIndicatorHeight);
+  }
+
+  @override
+  Size preferredSize = Size.zero;
 }
