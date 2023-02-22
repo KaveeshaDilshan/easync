@@ -24,33 +24,33 @@ class _AppPermissionState extends State<AppPermission>
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance!.addObserver(this);
+    // WidgetsBinding.instance!.addObserver(this);
     _checkStoragePermission();
   }
 
-  @override
-  Future<void> didChangeAppLifecycleState(AppLifecycleState state) async {
-    if (state == AppLifecycleState.resumed) {
-      final status = await Permission.storage.status;
-      if (status == PermissionStatus.granted &&
-          _storagePermission !=
-              Future.value(PermissionState.grantedPermission)) {
-        setState(() {
-          _storagePermission = Future.value(PermissionState.grantedPermission);
-        });
-      } else if (status == PermissionStatus.denied &&
-          _storagePermission ==
-              Future.value(PermissionState.grantedPermission)) {
-        _storagePermission = Future.value(PermissionState.noStoragePermission);
-      }
-    }
-  }
+  // @override
+  // Future<void> didChangeAppLifecycleState(AppLifecycleState state) async {
+  //   if (state == AppLifecycleState.resumed) {
+  //     final status = await Permission.storage.status;
+  //     if (status == PermissionStatus.granted &&
+  //         _storagePermission !=
+  //             Future.value(PermissionState.grantedPermission)) {
+  //       setState(() {
+  //         _storagePermission = Future.value(PermissionState.grantedPermission);
+  //       });
+  //     } else if (status == PermissionStatus.denied &&
+  //         _storagePermission ==
+  //             Future.value(PermissionState.grantedPermission)) {
+  //       _storagePermission = Future.value(PermissionState.noStoragePermission);
+  //     }
+  //   }
+  // }
 
-  @override
-  void dispose() {
-    WidgetsBinding.instance!.removeObserver(this);
-    super.dispose();
-  }
+  // @override
+  // void dispose() {
+  //   WidgetsBinding.instance!.removeObserver(this);
+  //   super.dispose();
+  // }
 
   Future<void> _checkStoragePermission() async {
     final status = await Permission.storage.status;

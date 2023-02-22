@@ -272,9 +272,6 @@ class InnerFolderState extends State<InnerFolder> {
   }
 
   Future<void> saveFilePermanently(PlatformFile file) async {
-    // final appStorage = await getApplicationDocumentsDirectory();
-    // final Directory? appDocDir = await getExternalStorageDirectory();
-    // final newFile = File('${appDocDir?.path}/${file.name}');
     final newFile = File('$fileStr/${file.name}');
     File(file.path!).copy(newFile.path);
     getDir();

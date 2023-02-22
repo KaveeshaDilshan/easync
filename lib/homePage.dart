@@ -19,7 +19,7 @@ class _HomePageState extends State<HomePage> {
   ServerSocket? serverObject;
   Socket? clientObject;
   bool syncClosed = true;
-  double progressBarSize = 0.5;
+  double progressBarSize = 0.0;
   bool isFileCopying = false;
   Future<String> createFolderInAppDocDir(String folderName) async {
     final Directory appDocDirFolder =
@@ -522,60 +522,45 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
+  // Future<void> saveFilePermanently(PlatformFile file) async {
+  //   final newFile = File('/storage/emulated/0/Easync/${file.name}');
+  //   await File(file.path!).copy(newFile.path);
+  //   getDir();
+  // }
+
   Future<void> saveFilePermanently(PlatformFile file) async {
+    setState(() {
+      isFileCopying = true;
+    });
     final newFile = File('/storage/emulated/0/Easync/${file.name}');
-    await File(file.path!).copy(newFile.path);
-    Future.delayed(const Duration(milliseconds: 100), () {
-      getDir();
+
+    final oldFile = File(file.path!);
+    final oldFileLength = await oldFile.length();
+
+    final newFileSink = newFile.openWrite();
+    final oldFileStream = oldFile.openRead();
+
+    int bytesWritten = 0;
+    var completer = Completer<void>();
+    await for (final data in oldFileStream) {
+      bytesWritten += data.length;
+      newFileSink.add(data);
+      final progress = bytesWritten / oldFileLength;
+      setState(() {
+        progressBarSize = progress;
+      });
+      print('Progress: ${progress}');
+      if (progress >= 1.0) {
+        completer.complete();
+      }
+    }
+    await completer.future;
+    getDir();
+    await newFileSink.close();
+    setState(() {
+      isFileCopying = false;
     });
   }
-
-  // Future<void> saveFilePermanently(PlatformFile file) async {
-  //   print("isFileCopyingisFileCopyingisFileCopyingisFileCopying1");
-  //   print("isFileCopyingisFileCopyingisFileCopyingisFileCopying2");
-  //   print("isFileCopyingisFileCopyingisFileCopyingisFileCopying3");
-  //   print("isFileCopyingisFileCopyingisFileCopyingisFileCopying");
-  //   print("isFileCopyingisFileCopyingisFileCopyingisFileCopying");
-  //   print("isFileCopyingisFileCopyingisFileCopyingisFileCopying");
-  //   setState(() {
-  //     isFileCopying = true;
-  //   });
-  //   print("isFileCopyingisFileCopyingisFileCopyingisFileCopying");
-  //   print("isFileCopyingisFileCopyingisFileCopyingisFileCopying");
-  //   print("isFileCopyingisFileCopyingisFileCopyingisFileCopying");
-  //   print("isFileCopyingisFileCopyingisFileCopyingisFileCopying");
-  //   print(isFileCopying);
-  //   final newFile = File('/storage/emulated/0/Easync/${file.name}');
-  //
-  //   final oldFile = File(file.path!);
-  //   final oldFileLength = await oldFile.length();
-  //
-  //   final newFileSink = newFile.openWrite();
-  //   final oldFileStream = oldFile.openRead();
-  //
-  //   int bytesWritten = 0;
-  //   var completer = Completer<void>();
-  //   await for (final data in oldFileStream) {
-  //     bytesWritten += data.length;
-  //     newFileSink.add(data);
-  //     final progress = bytesWritten / oldFileLength;
-  //     setState(() {
-  //       progressBarSize = progress;
-  //     });
-  //     print('Progress: ${progress}');
-  //     if (progress >= 1.0) {
-  //       completer.complete();
-  //     }
-  //   }
-  //   await completer.future;
-  //   getDir();
-  //   print(
-  //       "4444444444444444444444444444444444444444444444444444444444444444444");
-  //   await newFileSink.close();
-  //   // setState(() {
-  //   //   isFileCopying = false;
-  //   // });
-  // }
 
   void openFile(File file) {
     OpenFile.open(file.path);
