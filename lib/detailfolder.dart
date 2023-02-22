@@ -114,15 +114,7 @@ class InnerFolderState extends State<InnerFolder> {
 
   late List<FileSystemEntity> _folders;
   Future<void> getDir() async {
-    /* final directory = await getApplicationDocumentsDirectory();
-    final dir = directory.path;
-    String pdfDirectory = '$dir/';
-    final myDir = new Directory(pdfDirectory);*/
-
     final myDir = Directory(fileStr);
-
-    // var _folders_list = myDir.listSync(recursive: true, followLinks: false);
-
     setState(() {
       _folders = myDir.listSync(recursive: false, followLinks: false);
     });
@@ -170,6 +162,8 @@ class InnerFolderState extends State<InnerFolder> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
+        title:
+            Text(fileStr.split('/').elementAt(fileStr.split('/').length - 1)),
         actions: [
           IconButton(
             icon: const Icon(Icons.file_upload_rounded),

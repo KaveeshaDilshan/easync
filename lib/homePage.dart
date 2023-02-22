@@ -19,7 +19,8 @@ class _HomePageState extends State<HomePage> {
   ServerSocket? serverObject;
   Socket? clientObject;
   bool syncClosed = true;
-  double syncingBarSize = 0.0;
+  double progressBarSize = 0.5;
+  bool isFileCopying = false;
   Future<String> createFolderInAppDocDir(String folderName) async {
     final Directory appDocDirFolder =
         Directory('/storage/emulated/0/Easync/$folderName/');
@@ -45,7 +46,7 @@ class _HomePageState extends State<HomePage> {
   Future<void> _showMyDialog() async {
     return showDialog<void>(
       context: context,
-      barrierDismissible: false, // user must tap button!
+      barrierDismissible: false,
       builder: (BuildContext context) {
         return AlertDialog(
           title: Column(
@@ -53,13 +54,18 @@ class _HomePageState extends State<HomePage> {
               Text(
                 'ADD FOLDER',
                 textAlign: TextAlign.left,
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 20,
+                ),
               ),
+              SizedBox(height: 10),
               Text(
                 'Type a folder name to add',
                 style: TextStyle(
-                  fontSize: 14,
+                  fontSize: 16,
                 ),
-              )
+              ),
             ],
           ),
           content: StatefulBuilder(
@@ -67,8 +73,20 @@ class _HomePageState extends State<HomePage> {
               return TextField(
                 controller: folderController,
                 autofocus: true,
-                decoration:
-                    const InputDecoration(hintText: 'Enter folder name'),
+                decoration: InputDecoration(
+                  hintText: 'Enter folder name',
+                  border: OutlineInputBorder(
+                    borderSide: const BorderSide(
+                      color: Colors.grey,
+                      width: 2.0,
+                    ),
+                    borderRadius: BorderRadius.circular(10.0),
+                  ),
+                  contentPadding: const EdgeInsets.symmetric(
+                    vertical: 15.0,
+                    horizontal: 10.0,
+                  ),
+                ),
                 onChanged: (val) {
                   setState(() {
                     nameOfFolder = folderController.text;
@@ -103,7 +121,7 @@ class _HomePageState extends State<HomePage> {
                 backgroundColor: Colors.redAccent,
               ),
               child: const Text(
-                'No',
+                'Cancel',
                 style: TextStyle(color: Colors.white),
               ),
               onPressed: () {
@@ -133,11 +151,25 @@ class _HomePageState extends State<HomePage> {
       builder: (BuildContext context) {
         return AlertDialog(
           title: const Text(
-            'Are you sure to delete this folder?',
+            'Are you sure you want to delete this folder?',
+            style: TextStyle(
+              fontSize: 18.0,
+              fontWeight: FontWeight.bold,
+              color: Colors.black,
+            ),
           ),
           actions: <Widget>[
             TextButton(
-              child: const Text('Yes'),
+              style: TextButton.styleFrom(
+                backgroundColor: Colors.redAccent,
+              ),
+              child: const Text(
+                'Delete',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
               onPressed: () async {
                 await _folders[index].delete(recursive: true);
                 await getDir();
@@ -146,7 +178,16 @@ class _HomePageState extends State<HomePage> {
               },
             ),
             TextButton(
-              child: const Text('No'),
+              style: TextButton.styleFrom(
+                backgroundColor: Colors.blue,
+              ),
+              child: const Text(
+                'Cancel',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
               onPressed: () {
                 Navigator.of(context).pop();
               },
@@ -159,7 +200,6 @@ class _HomePageState extends State<HomePage> {
 
   @override
   void initState() {
-    // TODO: implement initState
     _folders = [];
     getDir();
     super.initState();
@@ -253,53 +293,97 @@ class _HomePageState extends State<HomePage> {
                         Future.delayed(const Duration(milliseconds: 1500));
                         Navigator.of(context).pop();
                       }
-                      return AlertDialog(
-                        title: const Text(
-                            'Make sure 2 devices are connected to local wifi network'),
-                        content: SizedBox(
-                          width:
-                              300.0, // set the width as per your requirements
-                          height:
-                              100.0, // set the height as per your requirements
-                          child: Center(
+                      return Dialog(
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 24.0,
+                            vertical: 16.0,
+                          ),
+                          child: Container(
+                            width: double.infinity,
                             child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: deviceConnected
-                                  ? [
-                                      const Text("Devices are connected!"),
-                                    ]
-                                  : [
-                                      const CircularProgressIndicator(),
-                                      const SizedBox(height: 20),
-                                      const Text(
-                                          "Waiting for connecting devices"),
-                                    ],
+                              mainAxisSize: MainAxisSize.min,
+                              crossAxisAlignment: CrossAxisAlignment.center,
+                              children: [
+                                const Text(
+                                  'Make sure both devices are connected to the same local Wi-Fi network',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 18,
+                                  ),
+                                  textAlign: TextAlign.center,
+                                ),
+                                const SizedBox(height: 24),
+                                deviceConnected
+                                    ? Column(
+                                        children: const [
+                                          Icon(
+                                            Icons.check_circle,
+                                            color: Colors.green,
+                                            size: 40,
+                                          ),
+                                          SizedBox(height: 8),
+                                          Text(
+                                            'Devices are connected!',
+                                            style: TextStyle(
+                                              fontWeight: FontWeight.bold,
+                                              fontSize: 16,
+                                            ),
+                                          ),
+                                        ],
+                                      )
+                                    : Column(
+                                        children: const [
+                                          SizedBox(
+                                            height: 40,
+                                            width: 40,
+                                            child: CircularProgressIndicator(),
+                                          ),
+                                          SizedBox(height: 16),
+                                          Text(
+                                            'Waiting for connecting devices...',
+                                            style: TextStyle(
+                                              fontWeight: FontWeight.bold,
+                                              fontSize: 16,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                const SizedBox(height: 24),
+                                ElevatedButton(
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: Colors.green,
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(10),
+                                    ),
+                                  ),
+                                  onPressed: () {
+                                    setState(() {
+                                      syncClosed = true;
+                                    });
+                                    if (serverObject != null) {
+                                      serverObject?.close();
+                                      setState(() {
+                                        serverObject = null;
+                                      });
+                                    }
+                                    if (clientObject != null) {
+                                      clientObject?.close();
+                                      setState(() {
+                                        clientObject = null;
+                                      });
+                                    }
+                                    Navigator.of(context).pop();
+                                  },
+                                  child: const Text('Close'),
+                                ),
+                              ],
                             ),
                           ),
                         ),
-                        actions: <Widget>[
-                          TextButton(
-                            child: const Text('Close'),
-                            onPressed: () {
-                              setState(() {
-                                syncClosed = true;
-                              });
-                              if (serverObject != null) {
-                                serverObject?.close();
-                                setState(() {
-                                  serverObject = null;
-                                });
-                              }
-                              if (clientObject != null) {
-                                clientObject?.close();
-                                setState(() {
-                                  clientObject = null;
-                                });
-                              }
-                              Navigator.of(context).pop();
-                            },
-                          ),
-                        ],
                       );
                     },
                   );
@@ -341,10 +425,10 @@ class _HomePageState extends State<HomePage> {
             },
           ),
         ],
-        bottom: deviceConnected
+        bottom: (deviceConnected || isFileCopying)
             ? MyLinearProgressIndicator(
                 backgroundColor: Colors.blue,
-                value: syncingBarSize,
+                value: progressBarSize,
                 valueColor: const AlwaysStoppedAnimation<Color>(Colors.orange),
               )
             : null,
@@ -440,9 +524,58 @@ class _HomePageState extends State<HomePage> {
 
   Future<void> saveFilePermanently(PlatformFile file) async {
     final newFile = File('/storage/emulated/0/Easync/${file.name}');
-    File(file.path!).copy(newFile.path);
-    getDir();
+    await File(file.path!).copy(newFile.path);
+    Future.delayed(const Duration(milliseconds: 100), () {
+      getDir();
+    });
   }
+
+  // Future<void> saveFilePermanently(PlatformFile file) async {
+  //   print("isFileCopyingisFileCopyingisFileCopyingisFileCopying1");
+  //   print("isFileCopyingisFileCopyingisFileCopyingisFileCopying2");
+  //   print("isFileCopyingisFileCopyingisFileCopyingisFileCopying3");
+  //   print("isFileCopyingisFileCopyingisFileCopyingisFileCopying");
+  //   print("isFileCopyingisFileCopyingisFileCopyingisFileCopying");
+  //   print("isFileCopyingisFileCopyingisFileCopyingisFileCopying");
+  //   setState(() {
+  //     isFileCopying = true;
+  //   });
+  //   print("isFileCopyingisFileCopyingisFileCopyingisFileCopying");
+  //   print("isFileCopyingisFileCopyingisFileCopyingisFileCopying");
+  //   print("isFileCopyingisFileCopyingisFileCopyingisFileCopying");
+  //   print("isFileCopyingisFileCopyingisFileCopyingisFileCopying");
+  //   print(isFileCopying);
+  //   final newFile = File('/storage/emulated/0/Easync/${file.name}');
+  //
+  //   final oldFile = File(file.path!);
+  //   final oldFileLength = await oldFile.length();
+  //
+  //   final newFileSink = newFile.openWrite();
+  //   final oldFileStream = oldFile.openRead();
+  //
+  //   int bytesWritten = 0;
+  //   var completer = Completer<void>();
+  //   await for (final data in oldFileStream) {
+  //     bytesWritten += data.length;
+  //     newFileSink.add(data);
+  //     final progress = bytesWritten / oldFileLength;
+  //     setState(() {
+  //       progressBarSize = progress;
+  //     });
+  //     print('Progress: ${progress}');
+  //     if (progress >= 1.0) {
+  //       completer.complete();
+  //     }
+  //   }
+  //   await completer.future;
+  //   getDir();
+  //   print(
+  //       "4444444444444444444444444444444444444444444444444444444444444444444");
+  //   await newFileSink.close();
+  //   // setState(() {
+  //   //   isFileCopying = false;
+  //   // });
+  // }
 
   void openFile(File file) {
     OpenFile.open(file.path);
@@ -631,8 +764,6 @@ class _HomePageState extends State<HomePage> {
           } else {
             print('Error synchronizing folder');
           }
-          // Close the socket and exit the program
-          // socket.close();
         });
       }, onError: (error) {
         // print('Connection error');
@@ -683,11 +814,11 @@ class _HomePageState extends State<HomePage> {
           if (count == fileSize) {
             completer.complete();
             setState(() {
-              syncingBarSize = 0.0;
+              progressBarSize = 0.0;
             });
           } else {
             setState(() {
-              syncingBarSize = count / fileSize;
+              progressBarSize = count / fileSize;
             });
           }
         }, onDone: () {
@@ -714,7 +845,7 @@ class _HomePageState extends State<HomePage> {
   }
 }
 
-const double _kMyLinearProgressIndicatorHeight = 6.0;
+const double _kMyLinearProgressIndicatorHeight = 8.0;
 
 class MyLinearProgressIndicator extends LinearProgressIndicator
     implements PreferredSizeWidget {
