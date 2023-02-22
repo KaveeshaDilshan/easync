@@ -1,7 +1,9 @@
+import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:open_file/open_file.dart';
+import 'linearProgressBar.dart';
 
 class InnerFolder extends StatefulWidget {
   const InnerFolder({super.key, required this.filesPath});
@@ -15,6 +17,8 @@ class InnerFolder extends StatefulWidget {
 
 class InnerFolderState extends State<InnerFolder> {
   String get fileStr => widget.filesPath;
+  double progressBarSize = 0.0;
+  bool isFileCopying = false;
   Future<String> createFolderInAppDocDir(String folderName) async {
     //App Document Directory + folder name
     final Directory appDocDirFolder = Directory('$fileStr/$folderName/');
@@ -41,7 +45,7 @@ class InnerFolderState extends State<InnerFolder> {
   Future<void> _showMyDialog() async {
     return showDialog<void>(
       context: context,
-      barrierDismissible: false, // user must tap button!
+      barrierDismissible: false,
       builder: (BuildContext context) {
         return AlertDialog(
           title: Column(
@@ -49,13 +53,18 @@ class InnerFolderState extends State<InnerFolder> {
               Text(
                 'ADD FOLDER',
                 textAlign: TextAlign.left,
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 20,
+                ),
               ),
+              SizedBox(height: 10),
               Text(
                 'Type a folder name to add',
                 style: TextStyle(
-                  fontSize: 14,
+                  fontSize: 16,
                 ),
-              )
+              ),
             ],
           ),
           content: StatefulBuilder(
@@ -63,8 +72,20 @@ class InnerFolderState extends State<InnerFolder> {
               return TextField(
                 controller: folderController,
                 autofocus: true,
-                decoration:
-                    const InputDecoration(hintText: 'Enter folder name'),
+                decoration: InputDecoration(
+                  hintText: 'Enter folder name',
+                  border: OutlineInputBorder(
+                    borderSide: const BorderSide(
+                      color: Colors.grey,
+                      width: 2.0,
+                    ),
+                    borderRadius: BorderRadius.circular(10.0),
+                  ),
+                  contentPadding: const EdgeInsets.symmetric(
+                    vertical: 15.0,
+                    horizontal: 10.0,
+                  ),
+                ),
                 onChanged: (val) {
                   setState(() {
                     nameOfFolder = folderController.text;
@@ -83,7 +104,7 @@ class InnerFolderState extends State<InnerFolder> {
                 style: TextStyle(color: Colors.white),
               ),
               onPressed: () async {
-                if (nameOfFolder != "") {
+                if (nameOfFolder != null) {
                   await callFolderCreationMethod(nameOfFolder);
                   getDir();
                   setState(() {
@@ -99,7 +120,7 @@ class InnerFolderState extends State<InnerFolder> {
                 backgroundColor: Colors.redAccent,
               ),
               child: const Text(
-                'No',
+                'Cancel',
                 style: TextStyle(color: Colors.white),
               ),
               onPressed: () {
@@ -121,26 +142,49 @@ class InnerFolderState extends State<InnerFolder> {
   }
 
   Future<void> _showDeleteDialog(int index) async {
-    return showDialog<void>(
+    showDialog<void>(
       context: context,
       barrierDismissible: false, // user must tap button!
       builder: (BuildContext context) {
         return AlertDialog(
           title: const Text(
-            'Are you sure to delete this folder?',
+            'Are you sure you want to delete this folder?',
+            style: TextStyle(
+              fontSize: 18.0,
+              fontWeight: FontWeight.bold,
+              color: Colors.black,
+            ),
           ),
           actions: <Widget>[
             TextButton(
-              child: const Text('Yes'),
+              style: TextButton.styleFrom(
+                backgroundColor: Colors.redAccent,
+              ),
+              child: const Text(
+                'Delete',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
               onPressed: () async {
-                await _folders[index].delete();
+                await _folders[index].delete(recursive: true);
                 await getDir();
-                await Future.delayed(const Duration(milliseconds: 300));
+                await Future.delayed(const Duration(milliseconds: 100));
                 Navigator.of(context).pop();
               },
             ),
             TextButton(
-              child: const Text('No'),
+              style: TextButton.styleFrom(
+                backgroundColor: Colors.blue,
+              ),
+              child: const Text(
+                'Cancel',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
               onPressed: () {
                 Navigator.of(context).pop();
               },
@@ -181,6 +225,13 @@ class InnerFolderState extends State<InnerFolder> {
             },
           ),
         ],
+        bottom: (isFileCopying)
+            ? MyLinearProgressIndicator(
+                backgroundColor: Colors.blue,
+                value: progressBarSize,
+                valueColor: const AlwaysStoppedAnimation<Color>(Colors.orange),
+              )
+            : null,
       ),
       body: GridView.builder(
         padding: const EdgeInsets.symmetric(
@@ -271,10 +322,44 @@ class InnerFolderState extends State<InnerFolder> {
     );
   }
 
+  // Future<void> saveFilePermanently(PlatformFile file) async {
+  //   final newFile = File('$fileStr/${file.name}');
+  //   File(file.path!).copy(newFile.path);
+  //   getDir();
+  // }
+
   Future<void> saveFilePermanently(PlatformFile file) async {
+    setState(() {
+      isFileCopying = true;
+    });
     final newFile = File('$fileStr/${file.name}');
-    File(file.path!).copy(newFile.path);
+
+    final oldFile = File(file.path!);
+    final oldFileLength = await oldFile.length();
+
+    final newFileSink = newFile.openWrite();
+    final oldFileStream = oldFile.openRead();
+
+    int bytesWritten = 0;
+    var completer = Completer<void>();
+    await for (final data in oldFileStream) {
+      bytesWritten += data.length;
+      newFileSink.add(data);
+      final progress = bytesWritten / oldFileLength;
+      setState(() {
+        progressBarSize = progress;
+      });
+      debugPrint('Progress: ${progress}');
+      if (progress >= 1.0) {
+        completer.complete();
+      }
+    }
+    await completer.future;
     getDir();
+    await newFileSink.close();
+    setState(() {
+      isFileCopying = false;
+    });
   }
 
   void openFile(File file) {

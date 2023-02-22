@@ -9,6 +9,8 @@ import 'package:ping_discover_network_forked/ping_discover_network_forked.dart';
 import 'detailfolder.dart';
 import 'package:file_picker/file_picker.dart';
 
+import 'linearProgressBar.dart';
+
 class HomePage extends StatefulWidget {
   @override
   _HomePageState createState() => _HomePageState();
@@ -828,27 +830,4 @@ class _HomePageState extends State<HomePage> {
     }
     server.close();
   }
-}
-
-const double _kMyLinearProgressIndicatorHeight = 8.0;
-
-class MyLinearProgressIndicator extends LinearProgressIndicator
-    implements PreferredSizeWidget {
-  MyLinearProgressIndicator({
-    Key? key,
-    double? value,
-    required Color backgroundColor,
-    Animation<Color>? valueColor,
-  }) : super(
-          key: key,
-          value: value,
-          backgroundColor: backgroundColor,
-          valueColor: valueColor,
-        ) {
-    preferredSize =
-        const Size(double.infinity, _kMyLinearProgressIndicatorHeight);
-  }
-
-  @override
-  Size preferredSize = Size.zero;
 }
