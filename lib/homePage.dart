@@ -799,10 +799,10 @@ class _HomePageState extends State<HomePage> {
           print('Received $count/$fileSize bytes');
           consumer.add(data);
           if (count == fileSize) {
-            completer.complete();
             setState(() {
               progressBarSize = 0.0;
             });
+            completer.complete();
           } else {
             setState(() {
               progressBarSize = count / fileSize;
